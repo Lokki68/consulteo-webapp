@@ -28,3 +28,12 @@ export interface Patient extends User {
     city?: string
     postalCode?: string
 }
+
+export interface SessionType {
+    user: User & {
+        id: string
+        role: 'patient' | 'practitioner'
+    }
+    token?: string
+    expires: string
+}

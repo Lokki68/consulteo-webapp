@@ -5,10 +5,7 @@ const nextConfig: NextConfig = {
     compress: true,
     poweredByHeader: false,
 
-    experimental: {
-        ppr: true,
-        optimizePackageImports: ["@radix-ui/*", "lodash-es" ]
-    },
+    cacheComponents: true,
 
     async headers() {
         return [

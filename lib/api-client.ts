@@ -3,7 +3,7 @@ import {getSession} from "next-auth/react";
 
 let apiClient: AxiosInstance
 
-const createApiClient = async (token?: string) {
+const createApiClient = async (token?: string)=> {
     const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 
     const client = axios.create({
@@ -45,7 +45,7 @@ const createApiClient = async (token?: string) {
 }
 
 export const getApiClient = async (token?: string) => {
-    it (!apiClient) {
+    if (!apiClient) {
         apiClient = await createApiClient(token)
     }
 

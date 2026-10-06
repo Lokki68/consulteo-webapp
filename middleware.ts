@@ -1,60 +1,55 @@
-import { withAuth } from "next-auth/middleware";
 import { NextRequest, NextResponse } from "next/server";
+import {auth} from "@/lib/auth.ts";
 
-const publicRoutes = ["/", "/login", "/register", "/forgot-password"];
+export async function middleware(request: NextRequest) {
+    const session = await auth();
+    const pathname = request.nextUrl.pathname;
 
-export const middleware = withAuth((req: NextRequest & { nextauth: any }) => {
-  const pathname = req.nextUrl.pathname;
-  const token = req.nextauth.token;
-
-  if (publicRoutes.includes(pathname)) {
-    return NextResponse.next();
-  }
-
-  if (!token) {
-    const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set("callbackUrl", pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  const roleBasedRoutes: Record<string, string[]> = {
-    practitioner: [
-        "/dashboard/practitioner",
-        "/appointments/manage",
-        "/availability",
-        "/patients"
-    ],
-    patient: [
-        "/dashboard/patient",
-        "/search",
-        "/appointment/book",
-        "/my-appointments"
-    ],
-  };
-
-  const userRole = token.role as string;
-  const allowedRoutes = roleBasedRoutes[userRole] || []
-
-  const isAllowed = allowedRoutes.some((route) =>  pathname.startsWith(route));
-
-  if (!isAllowed && pathname.startsWith("/dashboard")) {
-    return NextResponse.redirect(
-        new URL(
-            userRole === 'practitioner' ? '/dashboard/practitioner' : '/dashboard/patient',
-            req.url
-        )
+    // Routes publiques
+    const publicRoutes = ["/", "/login", "/signup", "/practitioners"];
+    const isPublicRoute = publicRoutes.some((route) =>
+        pathname.startsWith(route)
     );
-  }
 
-  return NextResponse.next()
-},
-{
-  callbacks: {
-    authorized: ({token}) => !!token
-  }
-});
+    // Routes protégées praticien
+    const practitionerRoutes = ["/dashboard"];
+    const isPractitionerRoute = practitionerRoutes.some((route) =>
+        pathname.startsWith(route)
+    );
 
-export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|public).*)"]
+    // Si on est sur une route publique
+    if (isPublicRoute) {
+        // Si on a une session et qu'on essaie d'accéder à login/signup
+        // if (
+        //     session &&
+        //     (pathname.startsWith("/login") || pathname.startsWith("/signup"))
+        // ) {
+        //     return NextResponse.redirect(new URL("/", request.url));
+        // }
+        return NextResponse.next();
+    }
+
+    // Si on n'a pas de session
+    if (!session) {
+        return NextResponse.redirect(new URL("/login", request.url));
+    }
+
+    // Routes praticien
+    if (isPractitionerRoute && (session.user as any)?.role !== "PRACTITIONER") {
+        return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    return NextResponse.next();
 }
 
+export const config = {
+    matcher: [
+        /*
+         * Match all request paths except for the ones starting with:
+         * - _next/static (static files)
+         * - _next/image (image optimization files)
+         * - favicon.ico (favicon file)
+         */
+        "/((?!_next/static|_next/image|favicon.ico).*)",
+    ],
+};
